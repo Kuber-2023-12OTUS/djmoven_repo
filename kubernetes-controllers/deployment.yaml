@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: super-duper-deployment
+  namespace: homework
+  labels:
+    app: otus-homework
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: otus-homework
+  template:
+    metadata:
+      labels:
+        app: otus-homework
+    spec:
+      containers:
+      - name: nginx-app
+        image: nginx
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /homework/index.html
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /homework
+        - name: nginx-config-volume
+          mountPath: /etc/nginx
+          readOnly: true
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm -f /homework/index.html"]
+      initContainers:
+      - name: init
+        image: busybox
+        command: ["/bin/sh", "-c", "echo 'I love OTUS' > /init/index.html"]
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /init
+      volumes:
+      - name: shared-volume
+        emptyDir: {}
+      - name: nginx-config-volume
+        configMap:
+          name: nginx-config
+      nodeSelector:
+        homework: "true"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
